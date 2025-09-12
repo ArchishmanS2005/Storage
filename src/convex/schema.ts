@@ -30,14 +30,94 @@ const schema = defineSchema(
       isAnonymous: v.optional(v.boolean()), // is the user anonymous. do not remove
 
       role: v.optional(roleValidator), // role of the user. do not remove
+      
+      // Storage-specific fields
+      storageQuota: v.optional(v.number()), // Storage quota in bytes
+      storageUsed: v.optional(v.number()), // Storage used in bytes
+      peerNodeId: v.optional(v.string()), // Peer node identifier
+      publicKey: v.optional(v.string()), // Public key for encryption
     }).index("email", ["email"]), // index for the email. do not remove or modify
 
-    // add other tables here
+    // Files stored in the decentralized network
+    files: defineTable({
+      userId: v.id("users"),
+      name: v.string(),
+      size: v.number(),
+      mimeType: v.string(),
+      manifestHash: v.string(), // Hash of the manifest on blockchain
+      encryptionKey: v.string(), // Encrypted with user's key
+      chunks: v.array(v.object({
+        hash: v.string(),
+        size: v.number(),
+        peerIds: v.array(v.string()), // Peers storing this chunk
+      })),
+      status: v.union(
+        v.literal("uploading"),
+        v.literal("stored"),
+        v.literal("retrieving"),
+        v.literal("failed")
+      ),
+      redundancyFactor: v.number(), // Number of copies per chunk
+    }).index("by_user", ["userId"])
+      .index("by_status", ["status"])
+      .index("by_manifest", ["manifestHash"]),
 
-    // tableName: defineTable({
-    //   ...
-    //   // table fields
-    // }).index("by_field", ["field"])
+    // Peer nodes in the network
+    peers: defineTable({
+      nodeId: v.string(),
+      address: v.string(), // IP:Port or multiaddr
+      publicKey: v.string(),
+      storageCapacity: v.number(), // Total storage in bytes
+      storageUsed: v.number(), // Used storage in bytes
+      reputation: v.number(), // Reputation score
+      lastSeen: v.number(), // Timestamp
+      isOnline: v.boolean(),
+      location: v.optional(v.string()), // Geographic location
+    }).index("by_node_id", ["nodeId"])
+      .index("by_online", ["isOnline"])
+      .index("by_reputation", ["reputation"]),
+
+    // Storage deals between users and peers
+    deals: defineTable({
+      fileId: v.id("files"),
+      peerId: v.id("peers"),
+      chunkHash: v.string(),
+      price: v.number(), // Price in tokens
+      duration: v.number(), // Duration in seconds
+      status: v.union(
+        v.literal("pending"),
+        v.literal("active"),
+        v.literal("completed"),
+        v.literal("failed")
+      ),
+      proofInterval: v.number(), // Proof submission interval
+      lastProof: v.optional(v.number()), // Last proof timestamp
+    }).index("by_file", ["fileId"])
+      .index("by_peer", ["peerId"])
+      .index("by_status", ["status"]),
+
+    // Proof of storage submissions
+    proofs: defineTable({
+      dealId: v.id("deals"),
+      peerId: v.id("peers"),
+      chunkHash: v.string(),
+      proof: v.string(), // Cryptographic proof
+      challenge: v.string(), // Challenge that was answered
+      verified: v.boolean(),
+      blockchainTxHash: v.optional(v.string()),
+    }).index("by_deal", ["dealId"])
+      .index("by_peer", ["peerId"])
+      .index("by_verified", ["verified"]),
+
+    // Network statistics and monitoring
+    networkStats: defineTable({
+      totalFiles: v.number(),
+      totalStorage: v.number(),
+      activePeers: v.number(),
+      totalDeals: v.number(),
+      averageRetrievalTime: v.number(),
+      networkHealth: v.number(), // 0-100 score
+    }),
   },
   {
     schemaValidation: false,
