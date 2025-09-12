@@ -114,18 +114,19 @@ export default function Landing() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
                 size="lg" 
-                onClick={() => navigate(isAuthenticated ? "/dashboard" : "/auth")}
+                onClick={() => navigate(isAuthenticated ? "/dashboard?tab=contribute" : "/auth")}
                 className="text-lg px-8 py-6"
               >
-                {isAuthenticated ? "Go to Dashboard" : "Start Storing Files"}
+                {isAuthenticated ? "Contribute Storage" : "Start Contributing"}
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
               <Button 
                 variant="outline" 
                 size="lg"
+                onClick={() => navigate(isAuthenticated ? "/dashboard" : "/auth")}
                 className="text-lg px-8 py-6"
               >
-                Learn More
+                {isAuthenticated ? "Go to Dashboard" : "Start Storing Files"}
               </Button>
             </div>
           </motion.div>

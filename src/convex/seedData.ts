@@ -1,4 +1,4 @@
-import { internalMutation } from "./_generated/server";
+import { internalMutation, mutation } from "./_generated/server";
 
 export const seedNetworkData = internalMutation({
   args: {},
@@ -91,5 +91,48 @@ export const seedNetworkData = internalMutation({
     });
 
     return { message: "Network data seeded successfully", peersCreated: peers.length };
+  },
+});
+
+export const seedDonations = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Clear existing donations
+    const existingDonations = await ctx.db.query("donations").collect();
+    for (const donation of existingDonations) {
+      await ctx.db.delete(donation._id);
+    }
+
+    // Get some users to create sample donations
+    const users = await ctx.db.query("users").take(3);
+    
+    if (users.length > 0) {
+      const sampleDonations = [
+        {
+          userId: users[0]._id,
+          wallet: "0x742d35Cc6634C0532925a3b8D4C9db96590b4C8d",
+          pledgedCapacity: 500 * 1024 * 1024 * 1024, // 500 GB
+          status: "active" as const,
+          rewardBalance: 150,
+          lastUpdated: Date.now(),
+        },
+        {
+          userId: users[1]._id,
+          wallet: "0x8ba1f109551bD432803012645Hac136c22C501e5",
+          pledgedCapacity: 250 * 1024 * 1024 * 1024, // 250 GB
+          status: "active" as const,
+          rewardBalance: 75,
+          lastUpdated: Date.now(),
+        },
+      ];
+
+      for (const donation of sampleDonations) {
+        if (users.find(u => u._id === donation.userId)) {
+          await ctx.db.insert("donations", donation);
+        }
+      }
+    }
+
+    return { message: "Sample donations seeded successfully" };
   },
 });

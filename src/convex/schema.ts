@@ -36,7 +36,29 @@ const schema = defineSchema(
       storageUsed: v.optional(v.number()), // Storage used in bytes
       peerNodeId: v.optional(v.string()), // Peer node identifier
       publicKey: v.optional(v.string()), // Public key for encryption
+      
+      // Donation/wallet fields
+      walletAddress: v.optional(v.string()), // Connected wallet address
+      tokenBalance: v.optional(v.number()), // Demo token balance
+      preferredPledge: v.optional(v.number()), // Preferred pledge amount in bytes
     }).index("email", ["email"]), // index for the email. do not remove or modify
+
+    // Storage donations from users
+    donations: defineTable({
+      userId: v.id("users"),
+      wallet: v.string(), // Wallet address
+      pledgedCapacity: v.number(), // Pledged storage in bytes
+      status: v.union(
+        v.literal("pending"),
+        v.literal("active"),
+        v.literal("inactive")
+      ),
+      rewardBalance: v.number(), // Accumulated reward tokens
+      nodeId: v.optional(v.string()), // Optional peer node ID
+      lastUpdated: v.number(), // Timestamp of last update
+    }).index("by_user", ["userId"])
+      .index("by_wallet", ["wallet"])
+      .index("by_status", ["status"]),
 
     // Files stored in the decentralized network
     files: defineTable({

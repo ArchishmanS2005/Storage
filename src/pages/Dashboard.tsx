@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { 
   Sidebar, 
   SidebarContent, 
@@ -16,7 +17,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { motion } from "framer-motion";
 import { 
   Upload, 
@@ -28,15 +29,18 @@ import {
   HardDrive,
   Users,
   Activity,
-  Shield
+  Shield,
+  Copy
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { UploadSection } from "@/components/UploadSection";
 import { FilesSection } from "@/components/FilesSection";
 import { NetworkSection } from "@/components/NetworkSection";
+import { ContributeSection } from "@/components/ContributeSection";
+import { toast } from "sonner";
 
-type ActiveSection = "upload" | "files" | "network" | "settings";
+type ActiveSection = "upload" | "files" | "network" | "contribute" | "settings";
 
 export default function Dashboard() {
   const { user, signOut } = useAuth();
@@ -45,6 +49,17 @@ export default function Dashboard() {
   
   const networkStats = useQuery(api.network.getNetworkStats);
   const userFiles = useQuery(api.files.getUserFiles);
+  const myDonation = useQuery(api.peers.getMyDonation);
+  const topContributors = useQuery(api.peers.getTopContributors, { limit: 5 });
+
+  // Check for tab parameter in URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get('tab');
+    if (tab === 'contribute') {
+      setActiveSection('contribute');
+    }
+  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -71,6 +86,8 @@ export default function Dashboard() {
         return <FilesSection files={userFiles || []} />;
       case "network":
         return <NetworkSection stats={networkStats} />;
+      case "contribute":
+        return <ContributeSection />;
       case "settings":
         return (
           <div className="space-y-8">
@@ -147,6 +164,15 @@ export default function Dashboard() {
                 >
                   <Network className="w-4 h-4" />
                   <span>Network</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={activeSection === "contribute"}
+                  onClick={() => setActiveSection("contribute")}
+                >
+                  <HardDrive className="w-4 h-4" />
+                  <span>Contribute</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { getCurrentUser } from "./users";
 
 export const registerPeer = mutation({
   args: {
@@ -110,5 +111,155 @@ export const getBestPeers = query({
     });
 
     return peers.slice(0, args.count);
+  },
+});
+
+export const donateStorage = mutation({
+  args: {
+    pledgedCapacity: v.number(),
+    wallet: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      throw new Error("User not authenticated");
+    }
+
+    if (args.pledgedCapacity <= 0) {
+      throw new Error("Pledged capacity must be positive");
+    }
+
+    // Check for existing donation
+    const existingDonation = await ctx.db
+      .query("donations")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+
+    let donationId;
+    
+    if (existingDonation) {
+      // Update existing donation
+      await ctx.db.patch(existingDonation._id, {
+        pledgedCapacity: args.pledgedCapacity,
+        wallet: args.wallet,
+        status: "active",
+        lastUpdated: Date.now(),
+      });
+      donationId = existingDonation._id;
+    } else {
+      // Create new donation
+      donationId = await ctx.db.insert("donations", {
+        userId: user._id,
+        wallet: args.wallet,
+        pledgedCapacity: args.pledgedCapacity,
+        status: "active",
+        rewardBalance: 0,
+        lastUpdated: Date.now(),
+      });
+    }
+
+    // Update user's wallet address if not set
+    if (!user.walletAddress) {
+      await ctx.db.patch(user._id, {
+        walletAddress: args.wallet,
+      });
+    }
+
+    return donationId;
+  },
+});
+
+export const getMyDonation = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      return null;
+    }
+
+    return await ctx.db
+      .query("donations")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+  },
+});
+
+export const getTopContributors = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit || 10;
+    
+    const donations = await ctx.db
+      .query("donations")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .collect();
+
+    // Sort by combined score (pledged capacity + reward balance)
+    const sorted = donations
+      .map(donation => ({
+        ...donation,
+        score: donation.pledgedCapacity + (donation.rewardBalance * 1000000), // Weight rewards
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
+
+    // Get user info for each donation
+    const contributors = [];
+    for (const donation of sorted) {
+      const user = await ctx.db.get(donation.userId);
+      if (user) {
+        contributors.push({
+          ...donation,
+          userName: user.name || user.email || "Anonymous",
+          userImage: user.image,
+        });
+      }
+    }
+
+    return contributors;
+  },
+});
+
+export const accrueRewards = mutation({
+  args: {
+    amount: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) {
+      throw new Error("User not authenticated");
+    }
+
+    if (args.amount <= 0) {
+      throw new Error("Reward amount must be positive");
+    }
+
+    const donation = await ctx.db
+      .query("donations")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .unique();
+
+    if (!donation) {
+      throw new Error("No active donation found");
+    }
+
+    // Update donation reward balance
+    await ctx.db.patch(donation._id, {
+      rewardBalance: donation.rewardBalance + args.amount,
+      lastUpdated: Date.now(),
+    });
+
+    // Update user token balance
+    const currentBalance = user.tokenBalance || 0;
+    await ctx.db.patch(user._id, {
+      tokenBalance: currentBalance + args.amount,
+    });
+
+    return {
+      newRewardBalance: donation.rewardBalance + args.amount,
+      newTokenBalance: currentBalance + args.amount,
+    };
   },
 });
