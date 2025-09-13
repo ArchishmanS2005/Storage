@@ -1,3 +1,44 @@
+# secure-data-shards
+
+A brief description of your project.
+
+## Getting Started
+
+To get a local copy up and running, follow these simple steps.
+
+### Prerequisites
+
+Make sure you have [Node.js](https://nodejs.org/) and [pnpm](https://pnpm.io/installation) installed.
+
+### Installation
+
+1.  **Clone the repository:**
+    ```sh
+    git clone <your-repository-url>
+    ```
+2.  **Navigate to the project directory:**
+    ```sh
+    cd secure-data-shards
+    ```
+3.  **Install dependencies:**
+    The dependencies for this project are listed in `package.json`. You can install them using `pnpm`.
+    ```sh
+    pnpm install
+    ```
+4.  **Set up environment variables:**
+    Create a `.env.local` file in the root of your project and add your Convex deployment URL. You can get this from your project's dashboard on [Convex](https://dashboard.convex.dev/).
+    ```
+    VITE_CONVEX_URL="https://<your-deployment-name>.convex.cloud"
+    ```
+
+### Running the Project
+
+To run the application in development mode, execute the following command:
+```sh
+pnpm dev
+```
+Open your browser and navigate to `http://localhost:5173` to see the application.
+
 ## Overview
 
 This project uses the following tech stack:
@@ -254,4 +295,5 @@ When using convex, make sure:
 - Always use the `@/folder` path, with `@/convex/folder/file.ts` syntax for importing convex files.
 - This includes importing generated files like `@/convex/_generated/server`, `@/convex/_generated/api`
 - Remember to import functions like useQuery, useMutation, useAction, etc. from `convex/react`
-- NEVER have return type validators.
+- NEVER have return type validators.#   S t o r a g e  
+ 
